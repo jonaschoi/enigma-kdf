@@ -17,7 +17,9 @@ Historical Enigma was broken mainly through key management failures: reused sett
 | `operator-hygiene-guidelines.md` | Human discipline the system depends on but can't enforce: seed handling, message numbering, content hygiene. Read this before actually using the tool with someone. |
 
 ## Quick start
+There are 2 versions of the tool: a python script, and an HTML file. Both do the same thing.
 
+### Python Script
 Encrypt a message:
 
 ```
@@ -31,6 +33,25 @@ python3 enigma_kdf.py decrypt --seed "your shared phrase" --transmission "1|JXGE
 ```
 
 `--date` defaults to today's date in UTC if omitted. Run `python3 enigma_kdf.py -h` for the full option list and more examples. The HTML tool exposes the same functionality through a form instead of flags.
+
+### HTML File
+Open the `app/enigma-kdf.html' file in your browser. This file is stand alone and works offline.
+
+#### Encryption
+1. Enter your seed phrase and message in the appropriate boxes.
+2. Verify that your date is correct, and the message number is correct. Date is determined by UTC timezone. Increment the message number if it's not the first message sent for the date.
+3. Click `Encrypt`.
+4. Copy the encrypted text including the header, encrypted text, and tag and send it to the recipient.
+
+Enciphered text by Enigma removes all spaces, punctuation, and numbers.
+
+#### Decryption
+1. Enter your seed phrase.
+2. Verify that your date is correct.
+3. Paste your message into the Ciphertext box including the header, ciphertext, and tag.
+4. Click `Decrypt` and read your message.
+
+You will have to add your own spaces back into the words.
 
 ## How it works
 
