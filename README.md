@@ -1,5 +1,7 @@
 # Enigma KDF
 
+> **AI Usage Notice:** I used AI to make most of this.
+
 > **Before anything else:** this is a recreational cryptography exercise, not a vetted security tool. It fixes how Enigma's keys were historically generated and shared. It does not change Enigma's own cipher-level math: the keyspace is still small by modern standards, and no letter ever enciphers to itself. Do not use this for anything that actually needs to stay secret. See [Security summary](enigma-kdf-security-summary.md) for the full accounting of what's fixed and what isn't.
 
 Enigma M4, with the key management modernized. Instead of daily key sheets and transmitted indicators, both sides derive identical rotor and plugboard settings from one shared seed, fresh for every date and message.
