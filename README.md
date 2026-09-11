@@ -74,6 +74,10 @@ Not fixed, because it can't be without changing what this is: Enigma's own bound
 
 Full writeup in [enigma-kdf-security-summary.md](enigma-kdf-security-summary.md).
 
+## FAQ
+
+If you have an questions, refer to the [FAQ](FAQ.md).
+
 ## Before you use this with someone
 
 The math doesn't protect you from a weak seed, a reused message number, or a compromised device. Read [operator-hygiene-guidelines.md](operator-hygiene-guidelines.md) first.
