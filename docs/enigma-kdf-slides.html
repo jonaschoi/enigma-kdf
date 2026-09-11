@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enigma KDF: Security Summary</title>
+<style>
+  :root {
+    --bg: #17140f;
+    --panel: #1e1a13;
+    --line: #4a3f2e;
+    --line-soft: #332c20;
+    --text: #ece4d3;
+    --muted: #9a8f7a;
+    --accent: #c99a4b;
+    --accent-dim: #8a6a35;
+    --danger: #c0604a;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .deck {
+    position: relative;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8vh 10vw;
+  }
+
+  .slide.active {
+    display: flex;
+  }
+
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(32px, 5vw, 56px);
+    font-weight: 700;
+    margin: 0 0 12px;
+    line-height: 1.15;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: clamp(26px, 3.6vw, 40px);
+    font-weight: 700;
+    margin: 0 0 28px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 18px;
+  }
+
+  .subtitle {
+    font-size: clamp(16px, 1.6vw, 20px);
+    color: var(--muted);
+    max-width: 60ch;
+  }
+
+  ul.points {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: 78ch;
+  }
+
+  ul.points li {
+    font-size: clamp(16px, 1.7vw, 21px);
+    line-height: 1.55;
+    padding: 12px 0 12px 28px;
+    border-bottom: 1px solid var(--line-soft);
+    position: relative;
+  }
+
+  ul.points li:last-child { border-bottom: none; }
+
+  ul.points li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+  }
+
+  ul.points li strong {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .pair-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 84ch;
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 22px;
+    align-items: start;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .pair:last-child { border-bottom: none; }
+
+  .pair .problem {
+    font-size: clamp(14px, 1.3vw, 16px);
+    color: var(--danger);
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .pair .fix {
+    font-size: clamp(14px, 1.3vw, 16px);
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .pair .fix::before {
+    content: "→ ";
+    color: var(--accent);
+  }
+
+  .closing {
+    font-size: clamp(17px, 1.9vw, 23px);
+    line-height: 1.6;
+    max-width: 74ch;
+    color: var(--text);
+  }
+
+  .closing .accent-line {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .footer-note {
+    margin-top: 30px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* Title slide */
+  .title-slide {
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .title-slide h1 { font-size: clamp(44px, 7vw, 76px); }
+
+  /* Nav controls */
+  .nav {
+    position: fixed;
+    bottom: 22px;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted);
+    z-index: 10;
+  }
+
+  .nav button {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .nav button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent-dim); }
+  .nav button:disabled { opacity: 0.35; cursor: default; }
+
+  .progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: var(--accent);
+    z-index: 10;
+    transition: width 0.25s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .progress { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="deck" id="deck">
+
+  <section class="slide active title-slide">
+    <div class="kicker">SECURITY SUMMARY</div>
+    <h1>Enigma KDF</h1>
+    <p class="subtitle">What's fixed from historical Enigma, and what still isn't.</p>
+  </section>
+
+  <section class="slide">
+    <h2>The core idea</h2>
+    <ul class="points">
+      <li>Historical Enigma's failures were almost entirely key management: how keys were generated, shared, and reused. Not the cipher's own math.</li>
+      <li>This system replaces that layer with a real KDF and a real authentication tag.</li>
+      <li>It doesn't touch, and doesn't claim to fix, Enigma's own cryptographic limits.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>What this fixes (1/2)</h2>
+    <div class="pair-grid">
+      <div class="pair">
+        <div class="problem">Cillies: operators inventing "random" keys under pressure</div>
+        <div class="fix">Settings derived via HMAC-SHA256. No human ever picks a key by hand.</div>
+      </div>
+      <div class="pair">
+        <div class="problem">Doubled message-key encipherment, the 1930s flaw Rejewski broke</div>
+        <div class="fix">Doesn't exist here. No message key is ever encrypted and transmitted.</div>
+      </div>
+      <div class="pair">
+        <div class="problem">Shared Grundstellung across a day's traffic, which enabled Banburismus</div>
+        <div class="fix">Message number is a KDF input. Every message gets an independent key.</div>
+      </div>
+      <div class="pair">
+        <div class="problem">Physical key material: codebooks, bigram tables. Capture exposed weeks.</div>
+        <div class="fix">Nothing physical exists. Settings are computed on demand, in memory.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>What this fixes (2/2)</h2>
+    <div class="pair-grid">
+      <div class="pair">
+        <div class="problem">Indicator transmitted in the clear: a structured daily target</div>
+        <div class="fix">Nothing about settings is ever transmitted. Both sides re-derive independently.</div>
+      </div>
+      <div class="pair">
+        <div class="problem">Monthly key sheets, where one leak exposed weeks of traffic at once</div>
+        <div class="fix">Nothing pre-generated or stored in bulk. Settings exist only transiently.</div>
+      </div>
+      <div class="pair">
+        <div class="problem">No integrity or authentication: tampering was undetectable</div>
+        <div class="fix">Every message carries an HMAC tag, verified before decrypting.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <h2>Enigma's own limits, untouched</h2>
+    <ul class="points">
+      <li>No letter can ever encipher to itself.</li>
+      <li>The substitution is involutory: encryption and decryption are the same operation.</li>
+      <li>Effective keyspace is roughly equivalent to an 84-bit key, small by modern standards though not casually brute-forceable.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>Ciphertext-only cryptanalysis</h2>
+    <ul class="points">
+      <li>The one real remaining avenue is hill-climbing/genetic-algorithm attacks, the method behind the real 2006 M4 Project breaks.</li>
+      <li>Message length matters a lot. Published successful attacks generally needed 200-450+ characters. Short messages sit below where these reliably converge.</li>
+      <li>Success only costs one message. Breaking one reveals nothing about any other. Every message is independently keyed.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>The seed is the single point of failure</h2>
+    <ul class="points">
+      <li>Every protection in this system assumes the seed itself stays secret.</li>
+      <li>If it leaks, all past and future messages for that pair become instantly and permanently readable.</li>
+      <li>No forward secrecy. Unlike Signal's ratchet, every day's key is always re-derivable from the same seed, forever.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>Authentication: real, but limited</h2>
+    <ul class="points">
+      <li>Can't distinguish the two of you. A valid tag proves someone with this seed sent it, not which of the two. Inherent to any symmetric scheme.</li>
+      <li>Doesn't stop replay. A valid tag doesn't prove a message wasn't simply resent later.</li>
+      <li>Tag is truncated to 64 bits (16 hex characters) for readability. Still ~2<sup>64</sup> attempts to forge.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>No metadata protection</h2>
+    <ul class="points">
+      <li>Date and message number travel in the clear, by design. That's the tradeoff for never transmitting key material.</li>
+      <li>An observer always knows when messages were sent and roughly how many, even without breaking anything.</li>
+      <li>This system hides content. It does not hide the existence or pattern of communication.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>Dependent on the underlying primitives</h2>
+    <ul class="points">
+      <li>Security assumes HMAC-SHA256 remains sound.</li>
+      <li>Quantum computing's known impact, Grover's algorithm, only halves effective strength. Erosion, not a break.</li>
+      <li>A version marker (<code>v1</code>) is baked into every derived key, but isn't transmitted. Both sides still need prior agreement on which version is in use.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>Solvable, but deliberately left as-is</h2>
+    <ul class="points">
+      <li>Plaintext length leaks exactly. Padding to a fixed block would close this. Not implemented, by choice.</li>
+      <li>Message-number reuse and replay are operator discipline, not system-enforced. A local ledger could fix both automatically. Not implemented, by choice.</li>
+      <li>Neither is a limitation the design failed to notice. Both were considered and skipped, since this is a casual exercise, not a hardened system.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>Everything else is operator discipline</h2>
+    <ul class="points">
+      <li>Seed secrecy and seed strength.</li>
+      <li>Message-number discipline.</li>
+      <li>Endpoint and tool integrity.</li>
+      <li>Content hygiene: avoiding formulaic phrasing, keeping messages short.</li>
+      <li>A cryptographically sound design is only as good as the humans operating around it.</li>
+    </ul>
+  </section>
+
+  <section class="slide">
+    <h2>Bottom line</h2>
+    <p class="closing">
+      This is a genuine fix for the specific way historical Enigma failed:
+      <span class="accent-line">key management</span>. Built with a real KDF and a real MAC, not an ad hoc scheme.
+    </p>
+    <p class="closing" style="margin-top: 18px;">
+      It is <span class="accent-line">not</span> a cryptographically hardened system by contemporary standards. A bounded keyspace, no forward secrecy, no way to tell the two parties apart.
+    </p>
+    <p class="footer-note">A well-understood exercise, not a substitute for a vetted modern encryption tool.</p>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn">← Prev</button>
+  <span id="counter">1 / 13</span>
+  <button id="nextBtn">Next →</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll(".slide");
+  const total = slides.length;
+  let current = 0;
+
+  const counter = document.getElementById("counter");
+  const progress = document.getElementById("progress");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+
+  function render() {
+    slides.forEach((s, i) => s.classList.toggle("active", i === current));
+    counter.textContent = `${current + 1} / ${total}`;
+    progress.style.width = `${((current + 1) / total) * 100}%`;
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === total - 1;
+  }
+
+  function go(delta) {
+    const next = current + delta;
+    if (next >= 0 && next < total) {
+      current = next;
+      render();
+    }
+  }
+
+  prevBtn.addEventListener("click", () => go(-1));
+  nextBtn.addEventListener("click", () => go(1));
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight" || e.key === " ") { go(1); e.preventDefault(); }
+    if (e.key === "ArrowLeft") { go(-1); e.preventDefault(); }
+  });
+
+  render();
+</script>
+</body>
+</html>

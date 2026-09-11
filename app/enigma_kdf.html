@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enigma KDF</title>
+<style>
+  :root {
+    --bg: #17140f;
+    --panel: #1e1a13;
+    --line: #4a3f2e;
+    --line-soft: #332c20;
+    --text: #ece4d3;
+    --muted: #9a8f7a;
+    --accent: #c99a4b;
+    --accent-dim: #8a6a35;
+    --danger: #c0604a;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-display: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    line-height: 1.5;
+  }
+
+  body {
+    padding: 48px 20px 80px;
+  }
+
+  .panel {
+    max-width: 640px;
+    margin: 0 auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+  }
+
+  .nameplate {
+    padding: 28px 32px 22px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nameplate h1 {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin: 0 0 6px;
+    color: var(--text);
+  }
+
+  .nameplate p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tab {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 14px 0;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+
+  .tab:hover { color: var(--text); }
+
+  .tab[aria-selected="true"] {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  form.body {
+    padding: 26px 32px 28px;
+  }
+
+  .field {
+    margin-bottom: 18px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .field .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+
+  .strength-weak { color: var(--danger) !important; }
+  .strength-moderate { color: var(--muted) !important; }
+  .strength-strong, .strength-very-strong { color: var(--accent) !important; }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="date"],
+  input[type="number"],
+  textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 9px 11px;
+    border-radius: 3px;
+  }
+
+  input:focus-visible, textarea:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 84px;
+  }
+
+  .row {
+    display: flex;
+    gap: 12px;
+  }
+  .row > .field { flex: 1; }
+
+  .seed-row {
+    display: flex;
+    gap: 8px;
+  }
+  .seed-row input { flex: 1; }
+
+  .btn-small {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    padding: 0 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .btn-small:hover { color: var(--text); border-color: var(--accent-dim); }
+
+  .date-row { display: flex; gap: 8px; }
+  .date-row input { flex: 1; }
+
+  .checkbox-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    margin: 4px 0 20px;
+  }
+  .checkbox-line input { accent-color: var(--accent); }
+
+  .mode-toggle {
+    display: flex;
+    gap: 18px;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .mode-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .mode-toggle input { accent-color: var(--accent); }
+
+  button.primary {
+    width: 100%;
+    background: var(--accent);
+    color: #17140f;
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 700;
+    padding: 12px 0;
+    cursor: pointer;
+    border-radius: 3px;
+    letter-spacing: 0.01em;
+  }
+  button.primary:hover { background: #dbaf62; }
+
+  .output-section {
+    border-top: 1px solid var(--line);
+    padding: 22px 32px 24px;
+  }
+
+  .output-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .output-label span { font-size: 13px; color: var(--muted); }
+
+  .output-box {
+    background: var(--bg);
+    border: 1px solid var(--line-soft);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 12px 14px;
+    min-height: 44px;
+    word-break: break-all;
+    white-space: pre-wrap;
+    border-radius: 3px;
+  }
+
+  .output-box.empty { color: var(--muted); }
+  .output-box.error { color: var(--danger); }
+
+  .settings-box {
+    margin-top: 14px;
+    background: var(--bg);
+    border: 1px solid var(--line-soft);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    padding: 12px 14px;
+    white-space: pre;
+    border-radius: 3px;
+    overflow-x: auto;
+  }
+
+  footer {
+    max-width: 640px;
+    margin: 18px auto 0;
+    padding: 0 4px;
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <div class="nameplate">
+    <h1>Enigma KDF</h1>
+    <p>Enigma M4, with the key management modernized. Instead of daily key sheets and transmitted indicators, both sides derive identical rotor and plugboard settings from one shared seed, fresh for every date and message.</p>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" id="tab-encrypt" role="tab" aria-selected="true">Encrypt</button>
+    <button class="tab" id="tab-decrypt" role="tab" aria-selected="false">Decrypt</button>
+  </div>
+
+  <form class="body" id="form" autocomplete="off">
+    <div class="field">
+      <label for="seed">Seed phrase</label>
+      <div class="seed-row">
+        <input type="password" id="seed" placeholder="shared secret, agreed with your friend offline">
+        <button type="button" class="btn-small" id="toggle-seed">Show</button>
+      </div>
+      <div class="hint">Never sent anywhere. Used only to compute today's settings, locally, in this page.</div>
+      <div class="hint" id="seed-strength"></div>
+      <div class="hint">Long memorable phrases are fine here — more unpredictable words beats a short clever one. If you're storing this in a password manager rather than memorizing it, a shorter random string works just as well.</div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="date">Date (UTC)</label>
+        <div class="date-row">
+          <input type="date" id="date">
+          <button type="button" class="btn-small" id="today-btn">Today</button>
+        </div>
+      </div>
+      <div class="field" id="msg-field">
+        <label for="msg">Message number</label>
+        <input type="number" id="msg" min="0" step="1" value="1">
+      </div>
+    </div>
+
+    <div class="field" id="mode-toggle-field" style="display:none;">
+      <div class="mode-toggle">
+        <label><input type="radio" name="decrypt-mode" value="transmission" checked> Paste full transmission</label>
+        <label><input type="radio" name="decrypt-mode" value="manual"> Enter message number + ciphertext (skips authentication)</label>
+      </div>
+    </div>
+
+    <div class="field" id="text-field">
+      <label for="text" id="text-label">Plaintext</label>
+      <textarea id="text" placeholder="MEET ME AT NOON"></textarea>
+    </div>
+
+    <button type="submit" class="primary" id="submit-btn">Encrypt</button>
+  </form>
+
+  <div class="output-section">
+    <div class="output-label">
+      <span>Output</span>
+      <button type="button" class="btn-small" id="copy-btn">Copy</button>
+    </div>
+    <div class="output-box empty" id="output">Nothing yet.</div>
+    <div class="settings-box" id="settings-box" style="display:none;"></div>
+  </div>
+</div>
+
+<footer>Runs locally in this file. Nothing leaves the browser or is saved afterwards.</footer>
+
+<script>
+// =============================================================================
+// Enigma M4 KDF core (pure JS, no dependencies -- matches the Python CLI
+// byte-for-byte given the same seed / date / message number).
+// =============================================================================
+
+function sha256(bytes) {
+  const K = new Uint32Array([
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2,
+  ]);
+  let H = new Uint32Array([
+    0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,
+    0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19,
+  ]);
+  const bitLen = bytes.length * 8;
+  const withOne = new Uint8Array(bytes.length + 1);
+  withOne.set(bytes);
+  withOne[bytes.length] = 0x80;
+  let totalLen = withOne.length;
+  while (totalLen % 64 !== 56) totalLen++;
+  totalLen += 8;
+  const msg = new Uint8Array(totalLen);
+  msg.set(withOne);
+  const view = new DataView(msg.buffer);
+  view.setUint32(totalLen - 4, bitLen >>> 0, false);
+  view.setUint32(totalLen - 8, Math.floor(bitLen / 0x100000000), false);
+  const w = new Uint32Array(64);
+  function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+  for (let chunk = 0; chunk < totalLen; chunk += 64) {
+    for (let i = 0; i < 16; i++) w[i] = view.getUint32(chunk + i * 4, false);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i-15],7) ^ rotr(w[i-15],18) ^ (w[i-15] >>> 3);
+      const s1 = rotr(w[i-2],17) ^ rotr(w[i-2],19) ^ (w[i-2] >>> 10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) >>> 0;
+    }
+    let [a,b,c,d,e,f,g,h] = H;
+    for (let i = 0; i < 64; i++) {
+      const S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+      const S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (S0 + maj) >>> 0;
+      h=g; g=f; f=e; e=(d+temp1)>>>0;
+      d=c; c=b; b=a; a=(temp1+temp2)>>>0;
+    }
+    H[0]=(H[0]+a)>>>0; H[1]=(H[1]+b)>>>0; H[2]=(H[2]+c)>>>0; H[3]=(H[3]+d)>>>0;
+    H[4]=(H[4]+e)>>>0; H[5]=(H[5]+f)>>>0; H[6]=(H[6]+g)>>>0; H[7]=(H[7]+h)>>>0;
+  }
+  const out = new Uint8Array(32);
+  const outView = new DataView(out.buffer);
+  for (let i = 0; i < 8; i++) outView.setUint32(i*4, H[i], false);
+  return out;
+}
+
+function hmacSha256(keyBytes, msgBytes) {
+  const blockSize = 64;
+  let key = keyBytes;
+  if (key.length > blockSize) key = sha256(key);
+  if (key.length < blockSize) {
+    const padded = new Uint8Array(blockSize);
+    padded.set(key);
+    key = padded;
+  }
+  const ipad = new Uint8Array(blockSize);
+  const opad = new Uint8Array(blockSize);
+  for (let i = 0; i < blockSize; i++) {
+    ipad[i] = key[i] ^ 0x36;
+    opad[i] = key[i] ^ 0x5c;
+  }
+  const inner = sha256(concatBytes(ipad, msgBytes));
+  return sha256(concatBytes(opad, inner));
+}
+
+function concatBytes(...arrs) {
+  const total = arrs.reduce((s, a) => s + a.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const a of arrs) { out.set(a, offset); offset += a.length; }
+  return out;
+}
+
+function utf8Bytes(str) { return new TextEncoder().encode(str); }
+
+function estimateEntropyBits(seed) {
+  if (!seed) return 0;
+  const length = seed.length;
+  let pool = 0;
+  if (/[a-z]/.test(seed)) pool += 26;
+  if (/[A-Z]/.test(seed)) pool += 26;
+  if (/[0-9]/.test(seed)) pool += 10;
+  if (/[!-/:-@[-`{-~]/.test(seed)) pool += 32;
+  if (/ /.test(seed)) pool += 1;
+  if (pool === 0) pool = 1;
+  const poolBits = length * Math.log2(pool);
+  const uniqueRatio = new Set(seed).size / length;
+  return poolBits * uniqueRatio;
+}
+
+function entropyLabel(bits) {
+  if (bits < 40) return "weak";
+  if (bits < 70) return "moderate";
+  if (bits < 100) return "strong";
+  return "very strong";
+}
+
+const ROTORS = {
+  I:    { wiring: "EKMFLGDQVZNTOWYHXUSPAIBRCJ", notches: "Q" },
+  II:   { wiring: "AJDKSIRUXBLHWTMCQGZNPYFVOE", notches: "E" },
+  III:  { wiring: "BDFHJLCPRTXVZNYEIWGAKMUSQO", notches: "V" },
+  IV:   { wiring: "ESOVPZJAYQUIRHXLNFTGKDCMWB", notches: "J" },
+  V:    { wiring: "VZBRGITYUPSDNHLXAWMJQOFECK", notches: "Z" },
+  VI:   { wiring: "JPGVOUMFYQBENHZRDKASXLICTW", notches: "ZM" },
+  VII:  { wiring: "NZJHGRCXMYSWBOUFAIVLPEKQDT", notches: "ZM" },
+  VIII: { wiring: "FKQHTLXOCBJSPDZRAMEWNIUYGV", notches: "ZM" },
+};
+const GREEK_ROTORS = {
+  BETA:  "LEYJVCNIXWPBQMDRTAKZGFUHOS",
+  GAMMA: "FSOKANUERHMBTIYCWLQPZXVGJD",
+};
+const REFLECTORS_THIN = {
+  B_THIN: "ENKQAUYWJICOPBLMDXZVFTHRGS",
+  C_THIN: "RDOBJNTKVEHMLFCWZAXGYIPSUQ",
+};
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+const KDF_VERSION = "v1"; // Bump if the KDF or primitive (HMAC-SHA256) is ever
+                          // replaced. Both sides just agree on which version
+                          // they're running -- old and new messages never
+                          // collide, since the version is baked into every
+                          // derived key.
+
+function deriveKeystream(seed, dateStr, msgNum, numBytes = 64, purpose = "ENIGMA") {
+  const context = utf8Bytes(`${KDF_VERSION}|${purpose}|${dateStr}|${msgNum}`);
+  const key = utf8Bytes(seed);
+  let out = new Uint8Array(0);
+  let counter = 0;
+  while (out.length < numBytes) {
+    const counterBytes = new Uint8Array(4);
+    new DataView(counterBytes.buffer).setUint32(0, counter, false);
+    const block = hmacSha256(key, concatBytes(context, counterBytes));
+    out = concatBytes(out, block);
+    counter++;
+  }
+  return out.slice(0, numBytes);
+}
+
+function deriveMacKey(seed, dateStr, msgNum) {
+  return deriveKeystream(seed, dateStr, msgNum, 32, "MAC");
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+const MAC_TAG_HEX_LEN = 16; // 8 bytes / 64 bits -- plenty for a friend-to-
+                            // friend exercise; forging a valid tag by
+                            // guessing still takes on the order of 2^64
+                            // attempts.
+
+function computeMac(macKey, msgNum, ciphertext) {
+  const data = utf8Bytes(`${msgNum}|${ciphertext}`);
+  const fullDigest = hmacSha256(macKey, data);
+  return bytesToHex(fullDigest.slice(0, MAC_TAG_HEX_LEN / 2));
+}
+
+function constantTimeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function deriveSettings(seed, dateStr, msgNum) {
+  const ks = deriveKeystream(seed, dateStr, msgNum, 64);
+  let idx = 0;
+  const nextByte = () => { const b = ks[idx % ks.length]; idx++; return b; };
+
+  const pool = Object.keys(ROTORS);
+  const movingRotors = [];
+  for (let i = 0; i < 3; i++) {
+    const choiceIdx = nextByte() % pool.length;
+    movingRotors.push(pool.splice(choiceIdx, 1)[0]);
+  }
+  const greek = (nextByte() % 2 === 0) ? "BETA" : "GAMMA";
+  const reflector = (nextByte() % 2 === 0) ? "B_THIN" : "C_THIN";
+  const rings = [nextByte()%26, nextByte()%26, nextByte()%26, nextByte()%26];
+  const ground = [nextByte()%26, nextByte()%26, nextByte()%26, nextByte()%26];
+
+  const letters = ALPHABET.split("");
+  for (let i = letters.length - 1; i > 0; i--) {
+    const j = nextByte() % (i + 1);
+    [letters[i], letters[j]] = [letters[j], letters[i]];
+  }
+  const plugPairs = [];
+  const used = new Set();
+  for (let i = 0; i < letters.length; i++) {
+    if (plugPairs.length >= 10) break;
+    const a = letters[i];
+    if (used.has(a)) continue;
+    for (const b of letters.slice(i + 1)) {
+      if (!used.has(b)) { plugPairs.push([a, b]); used.add(a); used.add(b); break; }
+    }
+  }
+  return { rotors: movingRotors, greek, reflector, rings, ground, plugboard: plugPairs };
+}
+
+function formatSettings(s) {
+  const rotorNames = [s.greek, ...s.rotors];
+  const r = s.rings.map(v => ALPHABET[v]);
+  const g = s.ground.map(v => ALPHABET[v]);
+  const plug = s.plugboard.map(([a,b]) => a+b).join(" ");
+
+  return [
+    `Reflector: ${s.reflector}`,
+    `Rotor: ${rotorNames.join(" ")}`,
+    `Ring: ${r.join(" ")}`,
+    `Start: ${g.join(" ")}`,
+    `Plugboard: ${plug}`,
+  ].join("\n");
+}
+
+class Rotor {
+  constructor(wiring, notches, ring, position, moving) {
+    this.wiring = wiring; this.notches = notches;
+    this.ring = ring; this.position = position; this.moving = moving;
+  }
+  atNotch() { return this.notches.includes(ALPHABET[this.position]); }
+  step() { if (this.moving) this.position = (this.position + 1) % 26; }
+  forward(c) {
+    const shifted = ((c + this.position - this.ring) % 26 + 26) % 26;
+    const out = this.wiring.charCodeAt(shifted) - 65;
+    return ((out - this.position + this.ring) % 26 + 26) % 26;
+  }
+  backward(c) {
+    const shifted = ((c + this.position - this.ring) % 26 + 26) % 26;
+    const out = this.wiring.indexOf(ALPHABET[shifted]);
+    return ((out - this.position + this.ring) % 26 + 26) % 26;
+  }
+}
+
+class EnigmaM4 {
+  constructor(settings) {
+    const [leftR, midR, rightR] = settings.rotors;
+    this.reflectorWiring = REFLECTORS_THIN[settings.reflector];
+    this.greekRotor = new Rotor(GREEK_ROTORS[settings.greek], "", settings.rings[0], settings.ground[0], false);
+    this.left = new Rotor(ROTORS[leftR].wiring, ROTORS[leftR].notches, settings.rings[1], settings.ground[1], true);
+    this.middle = new Rotor(ROTORS[midR].wiring, ROTORS[midR].notches, settings.rings[2], settings.ground[2], true);
+    this.right = new Rotor(ROTORS[rightR].wiring, ROTORS[rightR].notches, settings.rings[3], settings.ground[3], true);
+    this.plugboard = {};
+    for (const [a, b] of settings.plugboard) { this.plugboard[a] = b; this.plugboard[b] = a; }
+  }
+  _stepRotors() {
+    const middleAtNotch = this.middle.atNotch();
+    const rightAtNotch = this.right.atNotch();
+    if (middleAtNotch) { this.middle.step(); this.left.step(); }
+    else if (rightAtNotch) { this.middle.step(); }
+    this.right.step();
+  }
+  _plug(ch) { return this.plugboard[ch] || ch; }
+  encryptChar(ch) {
+    if (!ALPHABET.includes(ch)) return ch;
+    this._stepRotors();
+    let c = this._plug(ch).charCodeAt(0) - 65;
+    c = this.right.forward(c); c = this.middle.forward(c);
+    c = this.left.forward(c); c = this.greekRotor.forward(c);
+    c = this.reflectorWiring.charCodeAt(c) - 65;
+    c = this.greekRotor.backward(c); c = this.left.backward(c);
+    c = this.middle.backward(c); c = this.right.backward(c);
+    const out = ALPHABET[c];
+    return this._plug(out);
+  }
+  process(text) {
+    const cleaned = text.toUpperCase().replace(/[^A-Z]/g, "");
+    let result = "";
+    for (const ch of cleaned) result += this.encryptChar(ch);
+    return result;
+  }
+}
+
+function encryptMessage(seed, dateStr, msgNum, plaintext) {
+  const settings = deriveSettings(seed, dateStr, msgNum);
+  const machine = new EnigmaM4(settings);
+  const ciphertext = machine.process(plaintext);
+  const macKey = deriveMacKey(seed, dateStr, msgNum);
+  const tag = computeMac(macKey, msgNum, ciphertext);
+  return { transmission: `${msgNum}|${ciphertext}|${tag}`, settings };
+}
+
+function decryptTransmission(seed, dateStr, transmission) {
+  const m = transmission.trim().match(/^(\d+)\|([A-Z]*)\|([0-9a-fA-F]{16})$/);
+  if (!m) throw new Error("Transmission missing <n>|CIPHERTEXT|TAG format.");
+  const msgNum = parseInt(m[1], 10);
+  const ciphertext = m[2];
+  const tag = m[3];
+
+  const macKey = deriveMacKey(seed, dateStr, msgNum);
+  const expectedTag = computeMac(macKey, msgNum, ciphertext);
+  if (!constantTimeEqual(tag.toLowerCase(), expectedTag.toLowerCase())) {
+    throw new Error(
+      "Authentication failed -- the tag doesn't match. The message may have been " +
+      "altered in transit, or the seed/date don't match what the sender used."
+    );
+  }
+
+  const settings = deriveSettings(seed, dateStr, msgNum);
+  const machine = new EnigmaM4(settings);
+  return { plaintext: machine.process(ciphertext), settings, msgNum };
+}
+
+// =============================================================================
+// UI wiring
+// =============================================================================
+
+const tabEncrypt = document.getElementById("tab-encrypt");
+const tabDecrypt = document.getElementById("tab-decrypt");
+const form = document.getElementById("form");
+const seedInput = document.getElementById("seed");
+const seedStrength = document.getElementById("seed-strength");
+const toggleSeedBtn = document.getElementById("toggle-seed");
+const dateInput = document.getElementById("date");
+const todayBtn = document.getElementById("today-btn");
+const msgField = document.getElementById("msg-field");
+const msgInput = document.getElementById("msg");
+const modeToggleField = document.getElementById("mode-toggle-field");
+const textField = document.getElementById("text-field");
+const textLabel = document.getElementById("text-label");
+const textInput = document.getElementById("text");
+const submitBtn = document.getElementById("submit-btn");
+const outputBox = document.getElementById("output");
+const settingsBox = document.getElementById("settings-box");
+const copyBtn = document.getElementById("copy-btn");
+
+let mode = "encrypt";
+
+function todayUTC() {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+    .toISOString().slice(0, 10);
+}
+
+todayBtn.addEventListener("click", () => { dateInput.value = todayUTC(); });
+
+toggleSeedBtn.addEventListener("click", () => {
+  const showing = seedInput.type === "text";
+  seedInput.type = showing ? "password" : "text";
+  toggleSeedBtn.textContent = showing ? "Show" : "Hide";
+});
+
+function updateSeedStrength() {
+  const seed = seedInput.value;
+  if (!seed) {
+    seedStrength.textContent = "";
+    seedStrength.className = "hint";
+    return;
+  }
+  const bits = estimateEntropyBits(seed);
+  const label = entropyLabel(bits);
+  seedStrength.textContent = `Estimated strength: ~${bits.toFixed(0)} bits (${label})`;
+  seedStrength.className = "hint strength-" + label.replace(" ", "-");
+}
+seedInput.addEventListener("input", updateSeedStrength);
+
+function setMode(newMode) {
+  mode = newMode;
+  tabEncrypt.setAttribute("aria-selected", mode === "encrypt");
+  tabDecrypt.setAttribute("aria-selected", mode === "decrypt");
+  modeToggleField.style.display = mode === "decrypt" ? "block" : "none";
+  updateDecryptSubMode();
+  textLabel.textContent = mode === "encrypt" ? "Plaintext" : "Ciphertext";
+  textInput.placeholder = mode === "encrypt"
+    ? "MEET ME AT NOON"
+    : (mode === "decrypt" ? "1|JXGEEAGCBIFHGZSA...|a3f9c81b2e047d56" : "");
+  submitBtn.textContent = mode === "encrypt" ? "Encrypt" : "Decrypt";
+  clearOutput();
+}
+
+function updateDecryptSubMode() {
+  if (mode !== "decrypt") { msgField.style.display = "block"; return; }
+  const manual = document.querySelector('input[name="decrypt-mode"]:checked').value === "manual";
+  msgField.style.display = manual ? "block" : "none";
+  textLabel.textContent = manual ? "Ciphertext" : "Transmission";
+  textInput.placeholder = manual ? "JXGEEAGCBIFHGZSA..." : "1|JXGEEAGCBIFHGZSA...|a3f9c81b2e047d56";
+}
+
+tabEncrypt.addEventListener("click", () => setMode("encrypt"));
+tabDecrypt.addEventListener("click", () => setMode("decrypt"));
+document.querySelectorAll('input[name="decrypt-mode"]').forEach(r =>
+  r.addEventListener("change", updateDecryptSubMode));
+
+function clearOutput() {
+  outputBox.textContent = "Nothing yet.";
+  outputBox.className = "output-box empty";
+  settingsBox.style.display = "none";
+}
+
+function showSettings(settings) {
+  settingsBox.textContent = formatSettings(settings);
+  settingsBox.style.display = "block";
+}
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const seed = seedInput.value;
+  const dateStr = dateInput.value || todayUTC();
+  const text = textInput.value;
+
+  if (!seed) {
+    outputBox.textContent = "Enter a seed phrase first.";
+    outputBox.className = "output-box error";
+    settingsBox.style.display = "none";
+    return;
+  }
+
+  try {
+    if (mode === "encrypt") {
+      const msgNum = parseInt(msgInput.value, 10) || 0;
+      const result = encryptMessage(seed, dateStr, msgNum, text);
+      outputBox.textContent = result.transmission;
+      outputBox.className = "output-box";
+      showSettings(result.settings);
+    } else {
+      const manual = document.querySelector('input[name="decrypt-mode"]:checked').value === "manual";
+      let result;
+      if (manual) {
+        const msgNum = parseInt(msgInput.value, 10) || 0;
+        const settings = deriveSettings(seed, dateStr, msgNum);
+        const machine = new EnigmaM4(settings);
+        result = { plaintext: machine.process(text), settings };
+      } else {
+        result = decryptTransmission(seed, dateStr, text);
+      }
+      outputBox.textContent = result.plaintext;
+      outputBox.className = "output-box";
+      showSettings(result.settings);
+    }
+  } catch (err) {
+    outputBox.textContent = "Error: " + err.message;
+    outputBox.className = "output-box error";
+    settingsBox.style.display = "none";
+  }
+});
+
+copyBtn.addEventListener("click", async () => {
+  const value = outputBox.textContent;
+  if (!value || value === "Nothing yet.") return;
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = value;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch (e2) { /* give up quietly */ }
+    document.body.removeChild(ta);
+  }
+  const original = copyBtn.textContent;
+  copyBtn.textContent = "Copied";
+  setTimeout(() => { copyBtn.textContent = original; }, 1200);
+});
+
+// Initial state
+dateInput.value = todayUTC();
+setMode("encrypt");
+</script>
+</body>
+</html>
